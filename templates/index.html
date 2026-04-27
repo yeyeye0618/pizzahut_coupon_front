@@ -113,6 +113,93 @@
             align-items: center;
         }
 
+        .filter-bar {
+            margin-top: 12px;
+            display: grid;
+            gap: 10px;
+            padding: 10px 12px;
+            background: rgba(255, 252, 246, 0.85);
+            border: 1px solid #f1d7bb;
+            border-radius: 14px;
+        }
+
+        .filter-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .filter-title {
+            margin: 0;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #7f4223;
+        }
+
+        .filter-summary {
+            font-size: 0.82rem;
+            color: #8b6a57;
+        }
+
+        .match-mode {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px;
+            border-radius: 999px;
+            border: 1px solid #efcfb4;
+            background: #fff;
+        }
+
+        .mode-option {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            border-radius: 999px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            color: #784a31;
+            user-select: none;
+        }
+
+        .mode-option input {
+            accent-color: #d6402a;
+            margin: 0;
+        }
+
+        .tags-filter-list {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .filter-tag {
+            border: 1px solid #efcfb4;
+            border-radius: 999px;
+            background: #fff;
+            color: #763f25;
+            font-size: 0.8rem;
+            font-weight: 700;
+            padding: 6px 12px;
+            cursor: pointer;
+            transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+        }
+
+        .filter-tag:hover {
+            transform: translateY(-1px);
+            border-color: #e69f70;
+        }
+
+        .filter-tag.active {
+            background: linear-gradient(120deg, #d6402a, #e9782f);
+            color: #fff;
+            border-color: #d6402a;
+        }
+
         .search-box {
             position: relative;
         }
@@ -272,6 +359,40 @@
             border-style: dashed;
         }
 
+        .tags-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .tags-label {
+            font-size: 0.8rem;
+            font-weight: 700;
+            color: #8b421f;
+            letter-spacing: 0.02em;
+        }
+
+        .tags-list {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tags-item {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid #efcfb4;
+            background: #fff7ea;
+            color: #763f25;
+            font-size: 0.78rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
         .copy-btn {
             margin-top: auto;
             border: 0;
@@ -388,20 +509,18 @@
             .grid {
                 grid-template-columns: 1fr;
             }
+
+            .filter-head {
+                align-items: flex-start;
+                flex-direction: column;
+            }
         }
     </style>
 </head>
 <body>
     <main class="container">
         <section class="hero">
-            <div class="hero-top">
-                <span class="brand"><span class="brand-dot"></span> Pizza Hut 優惠清單</span>
-                <span class="pill">即時串接 API</span>
-            </div>
-            <h1>完整 Pizza Hut 折價券列表</h1>
-            <p class="subtitle">
-                一次查看所有可用折價券。支援關鍵字搜尋與代碼快速複製，找優惠更快、點餐更直覺。
-            </p>
+            <h1>Pizza Hut Coupon</h1>
             <div class="controls">
                 <label class="search-box" for="search-input">
                     <span class="search-icon" aria-hidden="true"></span>
@@ -409,6 +528,21 @@
                 </label>
                 <div class="pill">總數 <span id="total-count">0</span></div>
                 <div class="pill">顯示 <span id="visible-count">0</span></div>
+            </div>
+            <div class="filter-bar">
+                <div class="filter-head">
+                    <div id="tags-filter-list" class="tags-filter-list" aria-live="polite"></div>
+                    <div class="match-mode" role="radiogroup" aria-label="標籤篩選模式">
+                        <label class="mode-option">
+                            <input type="radio" name="tag-match-mode" value="union" checked />
+                            OR
+                        </label>
+                        <label class="mode-option">
+                            <input type="radio" name="tag-match-mode" value="intersection" />
+                            AND
+                        </label>
+                    </div>
+                </div>
             </div>
             <p id="status" class="status" aria-live="polite"></p>
         </section>
@@ -431,6 +565,8 @@
         const emptyStateEl = document.getElementById("empty-state");
         const infiniteTriggerEl = document.getElementById("infinite-trigger");
         const toastEl = document.getElementById("toast");
+        const tagsFilterListEl = document.getElementById("tags-filter-list");
+        const tagsFilterSummaryEl = document.getElementById("tags-filter-summary");
 
         const PAGE_SIZE = 12;
         let allCoupons = [];
@@ -438,6 +574,9 @@
         let renderedCount = 0;
         let isAppending = false;
         let activeKeyword = "";
+        let tagMatchMode = "union";
+        const selectedTags = new Set();
+        let allAvailableTags = [];
 
         function escapeHtml(text) {
             return text
@@ -479,6 +618,13 @@
                 .join("");
         }
 
+        function normalizeTags(rawTags) {
+            const source = Array.isArray(rawTags) ? rawTags : String(rawTags ?? "").split(/[、,，|]/);
+            return source
+                .map((tag) => String(tag ?? "").trim())
+                .filter(Boolean);
+        }
+
         function showToast(message) {
             toastEl.textContent = message;
             toastEl.classList.add("show");
@@ -507,6 +653,7 @@
             const code = escapeHtml(String(coupon.coupon_num ?? "").trim() || "未提供");
             var description = escapeHtml(String(coupon.description ?? "").trim() || "暫無說明");
             const rawPreviewImage = String(coupon.preview_image ?? "").trim();
+            const tags = normalizeTags(coupon.tags);
             const previewImage = rawPreviewImage && !/^javascript:/i.test(rawPreviewImage)
                 ? escapeHtml(rawPreviewImage)
                 : "";
@@ -523,6 +670,10 @@
 
             const highlightedCode = highlightText(code, keyword);
             const highlightedDescription = highlightTextInHtml(description, keyword);
+            const normalizedTags = tags.map((tag) => escapeHtml(tag));
+            const tagsHtml = normalizedTags.length
+                ? `<div class="tags-row" aria-label="優惠標籤"><div class="tags-list">${normalizedTags.map((tag) => `<span class="tags-item">${highlightText(tag, keyword)}</span>`).join("")}</div></div>`
+                : "";
             
             const card = document.createElement("article");
             card.className = "coupon-card";
@@ -533,6 +684,7 @@
                     <h3 class="code">${highlightedCode}</h3>
                 </div>
                 ${previewHtml}
+                ${tagsHtml}
                 <p class="description">${highlightedDescription}</p>
                 <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?&type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
             `;
@@ -597,16 +749,98 @@
             return String(value ?? "").toLowerCase();
         }
 
+        function buildTagCatalog(coupons) {
+            const counter = new Map();
+            coupons.forEach((coupon) => {
+                normalizeTags(coupon.tags).forEach((tag) => {
+                    counter.set(tag, (counter.get(tag) || 0) + 1);
+                });
+            });
+
+            return [...counter.entries()]
+                .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], "zh-Hant"))
+                .map(([name]) => name);
+        }
+
+        function renderTagFilters(tags) {
+            if (!tagsFilterListEl) {
+                return;
+            }
+            tagsFilterListEl.innerHTML = "";
+            tags.forEach((tag) => {
+                const button = document.createElement("button");
+                button.type = "button";
+                button.className = "filter-tag";
+                button.dataset.tag = tag;
+                button.textContent = tag;
+                button.setAttribute("aria-pressed", selectedTags.has(tag) ? "true" : "false");
+                if (selectedTags.has(tag)) {
+                    button.classList.add("active");
+                }
+                tagsFilterListEl.appendChild(button);
+            });
+            updateTagFilterSummary();
+        }
+
+        function updateTagFilterSummary() {
+            if (!tagsFilterSummaryEl) {
+                return;
+            }
+            const count = selectedTags.size;
+            if (!count) {
+                tagsFilterSummaryEl.textContent = "未選取標籤";
+                return;
+            }
+            tagsFilterSummaryEl.textContent = `已選 ${count} 個標籤（${tagMatchMode === "intersection" ? "交集" : "聯集"}）`;
+        }
+
+        function getTagMatch(couponTags, tagsToMatch, mode) {
+            if (!tagsToMatch.length) {
+                return true;
+            }
+            const couponTagSet = new Set(couponTags);
+            if (mode === "intersection") {
+                return tagsToMatch.every((tag) => couponTagSet.has(tag));
+            }
+            return tagsToMatch.some((tag) => couponTagSet.has(tag));
+        }
+
         function filterCoupons(keyword) {
             const key = normalize(keyword).trim();
-            if (!key) {
-                return allCoupons;
-            }
+            const tagsToMatch = [...selectedTags];
 
             return allCoupons.filter((coupon) => {
-                return normalize(coupon.coupon_num).includes(key) ||
-                    normalize(coupon.description).includes(key);
+                const keywordMatched = !key ||
+                    normalize(coupon.coupon_num).includes(key) ||
+                    normalize(coupon.description).includes(key) ||
+                    normalize(normalizeTags(coupon.tags).join(" ")).includes(key);
+                if (!keywordMatched) {
+                    return false;
+                }
+                return getTagMatch(normalizeTags(coupon.tags), tagsToMatch, tagMatchMode);
             });
+        }
+
+        function updateResults() {
+            const keyword = searchEl.value;
+            const filtered = filterCoupons(keyword);
+            renderCoupons(filtered, keyword);
+
+            const trimmedKeyword = keyword.trim();
+            const hasKeyword = Boolean(trimmedKeyword);
+            const hasTags = selectedTags.size > 0;
+            if (hasKeyword || hasTags) {
+                const conditions = [];
+                if (hasKeyword) {
+                    conditions.push(`關鍵字「${trimmedKeyword}」`);
+                }
+                if (hasTags) {
+                    conditions.push(`標籤${tagMatchMode === "intersection" ? "交集" : "聯集"} ${selectedTags.size} 個`);
+                }
+                setStatus(`${conditions.join("＋")} 共 ${filtered.length} 筆`);
+            } else if (allCoupons.length > 0) {
+                setStatus(`已載入 ${allCoupons.length} 筆折價券`, "success");
+            }
         }
 
         async function copyCode(code) {
@@ -630,11 +864,16 @@
 
                 const data = await response.json();
                 allCoupons = Array.isArray(data) ? data : [];
+                allAvailableTags = buildTagCatalog(allCoupons);
+                renderTagFilters(allAvailableTags);
                 totalCountEl.textContent = allCoupons.length;
                 renderCoupons(allCoupons, searchEl.value);
                 setStatus(`已載入 ${allCoupons.length} 筆折價券`, "success");
             } catch (error) {
                 allCoupons = [];
+                allAvailableTags = [];
+                selectedTags.clear();
+                renderTagFilters(allAvailableTags);
                 totalCountEl.textContent = "0";
                 renderCoupons([], searchEl.value);
                 setStatus(`載入失敗：${error.message}`, "error");
@@ -653,14 +892,39 @@
 
         observer.observe(infiniteTriggerEl);
 
-        searchEl.addEventListener("input", () => {
-            const filtered = filterCoupons(searchEl.value);
-            renderCoupons(filtered, searchEl.value);
-            if (searchEl.value.trim()) {
-                setStatus(`搜尋「${searchEl.value.trim()}」共 ${filtered.length} 筆`);
-            } else if (allCoupons.length > 0) {
-                setStatus(`已載入 ${allCoupons.length} 筆折價券`, "success");
-            }
+        searchEl.addEventListener("input", updateResults);
+
+        if (tagsFilterListEl) {
+            tagsFilterListEl.addEventListener("click", (event) => {
+                const button = event.target.closest(".filter-tag");
+                if (!button) {
+                    return;
+                }
+                const tag = button.dataset.tag;
+                if (!tag) {
+                    return;
+                }
+
+                if (selectedTags.has(tag)) {
+                    selectedTags.delete(tag);
+                } else {
+                    selectedTags.add(tag);
+                }
+
+                button.classList.toggle("active", selectedTags.has(tag));
+                button.setAttribute("aria-pressed", selectedTags.has(tag) ? "true" : "false");
+                updateTagFilterSummary();
+                updateResults();
+            });
+        }
+
+        document.querySelectorAll("input[name='tag-match-mode']").forEach((radio) => {
+            radio.addEventListener("change", (event) => {
+                const nextMode = event.target.value === "intersection" ? "intersection" : "union";
+                tagMatchMode = nextMode;
+                updateTagFilterSummary();
+                updateResults();
+            });
         });
 
         listEl.addEventListener("click", (event) => {
