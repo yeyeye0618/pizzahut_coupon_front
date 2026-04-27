@@ -234,10 +234,17 @@
 
         .description {
             margin: 0;
-            color: #61483b;
+            color: #0f0b09;
             line-height: 1.6;
             min-height: 52px;
             word-break: break-word;
+        }
+
+        .keyword-highlight {
+            background-color: inherit;
+            color: red;
+            border-radius: 4px;
+            padding: 0 2px;
         }
 
         .preview {
@@ -256,7 +263,7 @@
         }
 
         .preview-empty {
-            height: 168px;
+            height: 237.5px;
             display: grid;
             place-items: center;
             color: #8b6a57;
@@ -294,6 +301,14 @@
             text-align: center;
             padding: 24px 18px;
             margin-top: 14px;
+        }
+
+        .infinite-trigger {
+            margin-top: 12px;
+            min-height: 22px;
+            text-align: center;
+            color: #8a6957;
+            font-size: 0.92rem;
         }
 
         .skeleton {
@@ -400,6 +415,7 @@
 
         <section>
             <div id="coupon-list" class="grid" aria-live="polite"></div>
+            <div id="infinite-trigger" class="infinite-trigger" aria-live="polite" hidden></div>
             <div id="empty-state" class="empty" hidden>找不到符合條件的折價券，試試看不同關鍵字。</div>
         </section>
     </main>
@@ -413,9 +429,15 @@
         const totalCountEl = document.getElementById("total-count");
         const visibleCountEl = document.getElementById("visible-count");
         const emptyStateEl = document.getElementById("empty-state");
+        const infiniteTriggerEl = document.getElementById("infinite-trigger");
         const toastEl = document.getElementById("toast");
 
+        const PAGE_SIZE = 12;
         let allCoupons = [];
+        let filteredCoupons = [];
+        let renderedCount = 0;
+        let isAppending = false;
+        let activeKeyword = "";
 
         function escapeHtml(text) {
             return text
@@ -424,6 +446,37 @@
                 .replaceAll(">", "&gt;")
                 .replaceAll('"', "&quot;")
                 .replaceAll("'", "&#39;");
+        }
+
+        function escapeRegExp(text) {
+            return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        }
+
+        function highlightText(text, keyword) {
+            const key = String(keyword ?? "").trim();
+            if (!key) {
+                return text;
+            }
+
+            const keywordRegex = new RegExp(`(${escapeRegExp(key)})`, "gi");
+            return text.replace(keywordRegex, `<mark class="keyword-highlight">$1</mark>`);
+        }
+
+        function highlightTextInHtml(html, keyword) {
+            const key = String(keyword ?? "").trim();
+            if (!key) {
+                return html;
+            }
+
+            return html
+                .split(/(<[^>]+>)/g)
+                .map((part) => {
+                    if (part.startsWith("<") && part.endsWith(">")) {
+                        return part;
+                    }
+                    return highlightText(part, key);
+                })
+                .join("");
         }
 
         function showToast(message) {
@@ -442,6 +495,7 @@
 
         function renderSkeletons(count = 6) {
             listEl.innerHTML = "";
+            infiniteTriggerEl.hidden = true;
             for (let i = 0; i < count; i += 1) {
                 const skeleton = document.createElement("div");
                 skeleton.className = "skeleton";
@@ -449,9 +503,9 @@
             }
         }
 
-        function createCard(coupon, index) {
+        function createCard(coupon, index, keyword = "") {
             const code = escapeHtml(String(coupon.coupon_num ?? "").trim() || "未提供");
-            const description = escapeHtml(String(coupon.description ?? "").trim() || "暫無說明");
+            var description = escapeHtml(String(coupon.description ?? "").trim() || "暫無說明");
             const rawPreviewImage = String(coupon.preview_image ?? "").trim();
             const previewImage = rawPreviewImage && !/^javascript:/i.test(rawPreviewImage)
                 ? escapeHtml(rawPreviewImage)
@@ -460,29 +514,83 @@
                 ? `<a class="preview" href="${previewImage}" target="_blank" rel="noopener noreferrer"><img loading="lazy" src="${previewImage}" alt="優惠餐點預覽圖" /></a>`
                 : `<div class="preview preview-empty" aria-label="無預覽圖">暫無預覽圖</div>`;
 
+            const price_regex = /價格：(\$\d+(?:~\$\d+)?)/;
+            const match = description.match(price_regex);
+            if (match) {
+                description = description.replace(price_regex, `價格：<span style="color: red; font-weight: bold;">$1</span>`);
+            }
+            description = description.replaceAll('。', `<br><br>`);
+
+            const highlightedCode = highlightText(code, keyword);
+            const highlightedDescription = highlightTextInHtml(description, keyword);
+            
             const card = document.createElement("article");
             card.className = "coupon-card";
             card.style.setProperty("--i", index);
             card.innerHTML = `
                 <div class="card-head">
                     <span class="tag">優惠代碼</span>
-                    <h3 class="code">${code}</h3>
+                    <h3 class="code">${highlightedCode}</h3>
                 </div>
                 ${previewHtml}
-                <p class="description">${description}</p>
+                <p class="description">${highlightedDescription}</p>
                 <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?&type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
             `;
             return card;
         }
 
-        function renderCoupons(coupons) {
+        function hasMoreCoupons() {
+            return renderedCount < filteredCoupons.length;
+        }
+
+        function updateInfiniteTrigger() {
+            if (filteredCoupons.length === 0) {
+                infiniteTriggerEl.hidden = true;
+                return;
+            }
+
+            infiniteTriggerEl.hidden = false;
+            infiniteTriggerEl.textContent = hasMoreCoupons()
+                ? "往下滑可載入更多折價券..."
+                : `已顯示全部 ${filteredCoupons.length} 筆`;
+        }
+
+        function appendNextPage() {
+            if (isAppending || !hasMoreCoupons()) {
+                updateInfiniteTrigger();
+                return;
+            }
+
+            isAppending = true;
+            const startIndex = renderedCount;
+            const nextCoupons = filteredCoupons.slice(startIndex, startIndex + PAGE_SIZE);
+
+            nextCoupons.forEach((coupon, index) => {
+                listEl.appendChild(createCard(coupon, startIndex + index, activeKeyword));
+            });
+
+            renderedCount += nextCoupons.length;
+            visibleCountEl.textContent = renderedCount;
+            emptyStateEl.hidden = filteredCoupons.length > 0;
+            isAppending = false;
+            updateInfiniteTrigger();
+        }
+
+        function renderCoupons(coupons, keyword = "") {
+            filteredCoupons = coupons;
+            activeKeyword = String(keyword ?? "").trim();
+            renderedCount = 0;
             listEl.innerHTML = "";
-            visibleCountEl.textContent = coupons.length;
+            visibleCountEl.textContent = "0";
             emptyStateEl.hidden = coupons.length > 0;
 
-            coupons.forEach((coupon, index) => {
-                listEl.appendChild(createCard(coupon, index));
-            });
+            appendNextPage();
+
+            while (hasMoreCoupons() && listEl.getBoundingClientRect().bottom < window.innerHeight + 80) {
+                appendNextPage();
+            }
+
+            updateInfiniteTrigger();
         }
 
         function normalize(value) {
@@ -523,19 +631,31 @@
                 const data = await response.json();
                 allCoupons = Array.isArray(data) ? data : [];
                 totalCountEl.textContent = allCoupons.length;
-                renderCoupons(allCoupons);
+                renderCoupons(allCoupons, searchEl.value);
                 setStatus(`已載入 ${allCoupons.length} 筆折價券`, "success");
             } catch (error) {
                 allCoupons = [];
                 totalCountEl.textContent = "0";
-                renderCoupons([]);
+                renderCoupons([], searchEl.value);
                 setStatus(`載入失敗：${error.message}`, "error");
             }
         }
 
+        const observer = new IntersectionObserver((entries) => {
+            if (entries.some((entry) => entry.isIntersecting)) {
+                appendNextPage();
+            }
+        }, {
+            root: null,
+            rootMargin: "180px 0px",
+            threshold: 0
+        });
+
+        observer.observe(infiniteTriggerEl);
+
         searchEl.addEventListener("input", () => {
             const filtered = filterCoupons(searchEl.value);
-            renderCoupons(filtered);
+            renderCoupons(filtered, searchEl.value);
             if (searchEl.value.trim()) {
                 setStatus(`搜尋「${searchEl.value.trim()}」共 ${filtered.length} 筆`);
             } else if (allCoupons.length > 0) {
