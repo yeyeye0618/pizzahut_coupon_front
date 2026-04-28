@@ -155,14 +155,14 @@
                 ? escapeHtml(rawPreviewImage)
                 : "";
             const previewHtml = previewImage
-                ? `<a class="preview" href="${previewImage}" target="_blank" rel="noopener noreferrer"><img loading="lazy" src="${previewImage}" alt="優惠餐點預覽圖" /></a>`
+                ? `<div class="preview"><img loading="lazy" src="${previewImage}" alt="優惠餐點預覽圖" /></div>`
                 : `<div class="preview preview-empty" aria-label="無預覽圖">暫無預覽圖</div>`;
 
             const highlightedCode = highlightText(code, keyword);
             const fullDescriptionHtml = formatDescriptionHtml(rawDescription, keyword);
-            const isLongDescription = rawDescription.length > 100;
+            const isLongDescription = rawDescription.length > 30;
             const shortDescriptionHtml = isLongDescription
-                ? formatDescriptionHtml(`${rawDescription.slice(0, 100)}…`, keyword)
+                ? formatDescriptionHtml(`${rawDescription.slice(0, 30)}…`, keyword)
                 : fullDescriptionHtml;
             const normalizedTags = tags.map((tag) => escapeHtml(tag));
             const tagsHtml = `<div class="tags-row${normalizedTags.length ? "" : " tags-row-empty"}" aria-label="優惠標籤"${normalizedTags.length ? "" : " aria-hidden=\"true\""}><div class="tags-list">${normalizedTags.map((tag) => `<span class="tags-item">${highlightText(tag, keyword)}</span>`).join("")}</div></div>`;
