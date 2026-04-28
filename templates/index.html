@@ -174,8 +174,10 @@
                 </div>
                 ${previewHtml}
                 <p class="description">${highlightedDescription}</p>
-                ${tagsHtml}
-                <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
+                <div class="card-footer">
+                    ${tagsHtml}
+                    <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
+                </div>
             `;
             return card;
         }

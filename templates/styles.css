@@ -316,7 +316,7 @@ h1 {
     margin: 0;
     color: #0f0b09;
     line-height: 1.6;
-    min-height: 52px;
+    flex: 1 1 auto;
     word-break: break-word;
 }
 
@@ -359,6 +359,13 @@ h1 {
     flex-wrap: wrap;
 }
 
+.card-footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
 .tags-label {
     font-size: 0.8rem;
     font-weight: 700;
@@ -387,7 +394,6 @@ h1 {
 }
 
 .copy-btn {
-    margin-top: auto;
     border: 0;
     border-radius: 12px;
     height: 40px;
