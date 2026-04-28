@@ -173,9 +173,9 @@
                     <h3 class="code">${highlightedCode}</h3>
                 </div>
                 ${previewHtml}
-                ${tagsHtml}
                 <p class="description">${highlightedDescription}</p>
-                <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?&type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
+                ${tagsHtml}
+                <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
             `;
             return card;
         }
