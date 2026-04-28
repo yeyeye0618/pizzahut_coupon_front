@@ -184,7 +184,7 @@
                     </p>
                     ${isLongDescription ? `<button class="description-toggle" type="button" data-expanded="false" data-short-html="${encodeURIComponent(shortDescriptionHtml)}" data-full-html="${encodeURIComponent(fullDescriptionHtml)}">顯示更多</button>` : ""}
                 </div>
-                <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
+                <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?mode=step_2&type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
             `;
             return card;
         }
