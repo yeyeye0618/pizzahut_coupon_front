@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, send_from_directory
 import json
 import time
 from supabase import create_client, Client
@@ -22,6 +22,10 @@ def fetch_copupons():
 @app.route("/")
 def index():
     return render_template("index.html")
+
+@app.route("/styles.css")
+def styles():
+    return send_from_directory(app.template_folder, "styles.css", mimetype="text/css")
 
 @app.route("/api/coupons")
 def get_coupons():
