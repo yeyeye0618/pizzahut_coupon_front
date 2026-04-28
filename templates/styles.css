@@ -320,6 +320,32 @@ h1 {
     word-break: break-word;
 }
 
+.description-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.description-toggle {
+    align-self: flex-start;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: #d6402a;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+}
+
+.description-toggle:hover {
+    text-decoration: underline;
+}
+
+.price-highlight {
+    color: #d6402a;
+    font-weight: 700;
+}
+
 .keyword-highlight {
     background-color: inherit;
     color: red;

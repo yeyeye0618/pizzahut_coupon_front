@@ -114,6 +114,14 @@
                 .filter(Boolean);
         }
 
+        function formatDescriptionHtml(rawText, keyword) {
+            let html = escapeHtml(String(rawText ?? "").trim() || "暫無說明");
+            const priceRegex = /價格：(\$\d+(?:~\$\d+)?)/;
+            html = html.replace(priceRegex, '價格：<span class="price-highlight">$1</span>');
+            html = html.replaceAll('。', '<br><br>');
+            return highlightTextInHtml(html, keyword);
+        }
+
         function showToast(message) {
             toastEl.textContent = message;
             toastEl.classList.add("show");
@@ -140,7 +148,7 @@
 
         function createCard(coupon, index, keyword = "") {
             const code = escapeHtml(String(coupon.coupon_num ?? "").trim() || "未提供");
-            var description = escapeHtml(String(coupon.description ?? "").trim() || "暫無說明");
+            const rawDescription = String(coupon.description ?? "").trim() || "暫無說明";
             const rawPreviewImage = String(coupon.preview_image ?? "").trim();
             const tags = normalizeTags(coupon.tags);
             const previewImage = rawPreviewImage && !/^javascript:/i.test(rawPreviewImage)
@@ -150,15 +158,12 @@
                 ? `<a class="preview" href="${previewImage}" target="_blank" rel="noopener noreferrer"><img loading="lazy" src="${previewImage}" alt="優惠餐點預覽圖" /></a>`
                 : `<div class="preview preview-empty" aria-label="無預覽圖">暫無預覽圖</div>`;
 
-            const price_regex = /價格：(\$\d+(?:~\$\d+)?)/;
-            const match = description.match(price_regex);
-            if (match) {
-                description = description.replace(price_regex, `價格：<span style="color: red; font-weight: bold;">$1</span>`);
-            }
-            description = description.replaceAll('。', `<br><br>`);
-
             const highlightedCode = highlightText(code, keyword);
-            const highlightedDescription = highlightTextInHtml(description, keyword);
+            const fullDescriptionHtml = formatDescriptionHtml(rawDescription, keyword);
+            const isLongDescription = rawDescription.length > 100;
+            const shortDescriptionHtml = isLongDescription
+                ? formatDescriptionHtml(`${rawDescription.slice(0, 100)}…`, keyword)
+                : fullDescriptionHtml;
             const normalizedTags = tags.map((tag) => escapeHtml(tag));
             const tagsHtml = normalizedTags.length
                 ? `<div class="tags-row" aria-label="優惠標籤"><div class="tags-list">${normalizedTags.map((tag) => `<span class="tags-item">${highlightText(tag, keyword)}</span>`).join("")}</div></div>`
@@ -173,7 +178,12 @@
                     <h3 class="code">${highlightedCode}</h3>
                 </div>
                 ${previewHtml}
-                <p class="description">${highlightedDescription}</p>
+                <div class="description-wrap">
+                    <p class="description">
+                        <span class="description-text">${shortDescriptionHtml}</span>
+                    </p>
+                    ${isLongDescription ? `<button class="description-toggle" type="button" data-expanded="false" data-short-html="${encodeURIComponent(shortDescriptionHtml)}" data-full-html="${encodeURIComponent(fullDescriptionHtml)}">顯示更多</button>` : ""}
+                </div>
                 <div class="card-footer">
                     ${tagsHtml}
                     <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
@@ -419,6 +429,24 @@
         });
 
         listEl.addEventListener("click", (event) => {
+            const toggleButton = event.target.closest(".description-toggle");
+            if (toggleButton) {
+                const textEl = toggleButton.closest(".description-wrap")?.querySelector(".description-text");
+                if (!textEl) {
+                    return;
+                }
+
+                const expanded = toggleButton.dataset.expanded === "true";
+                const nextExpanded = !expanded;
+                const html = nextExpanded
+                    ? decodeURIComponent(toggleButton.dataset.fullHtml || "")
+                    : decodeURIComponent(toggleButton.dataset.shortHtml || "");
+                textEl.innerHTML = html;
+                toggleButton.dataset.expanded = nextExpanded ? "true" : "false";
+                toggleButton.textContent = nextExpanded ? "顯示更少" : "顯示更多";
+                return;
+            }
+
             const button = event.target.closest(".copy-btn");
             if (!button) {
                 return;
