@@ -316,7 +316,7 @@ h1 {
     margin: 0;
     color: #0f0b09;
     line-height: 1.6;
-    flex: 1 1 auto;
+    min-height: 52px;
     word-break: break-word;
 }
 
@@ -383,13 +383,11 @@ h1 {
     align-items: center;
     gap: 8px;
     flex-wrap: wrap;
+    min-height: 26px;
 }
 
-.card-footer {
-    margin-top: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+.tags-row-empty {
+    visibility: hidden;
 }
 
 .tags-label {
@@ -420,6 +418,7 @@ h1 {
 }
 
 .copy-btn {
+    margin-top: auto;
     border: 0;
     border-radius: 12px;
     height: 40px;

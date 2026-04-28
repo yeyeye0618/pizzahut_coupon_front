@@ -165,9 +165,7 @@
                 ? formatDescriptionHtml(`${rawDescription.slice(0, 100)}…`, keyword)
                 : fullDescriptionHtml;
             const normalizedTags = tags.map((tag) => escapeHtml(tag));
-            const tagsHtml = normalizedTags.length
-                ? `<div class="tags-row" aria-label="優惠標籤"><div class="tags-list">${normalizedTags.map((tag) => `<span class="tags-item">${highlightText(tag, keyword)}</span>`).join("")}</div></div>`
-                : "";
+            const tagsHtml = `<div class="tags-row${normalizedTags.length ? "" : " tags-row-empty"}" aria-label="優惠標籤"${normalizedTags.length ? "" : " aria-hidden=\"true\""}><div class="tags-list">${normalizedTags.map((tag) => `<span class="tags-item">${highlightText(tag, keyword)}</span>`).join("")}</div></div>`;
             
             const card = document.createElement("article");
             card.className = "coupon-card";
@@ -178,16 +176,14 @@
                     <h3 class="code">${highlightedCode}</h3>
                 </div>
                 ${previewHtml}
+                ${tagsHtml}
                 <div class="description-wrap">
                     <p class="description">
                         <span class="description-text">${shortDescriptionHtml}</span>
                     </p>
                     ${isLongDescription ? `<button class="description-toggle" type="button" data-expanded="false" data-short-html="${encodeURIComponent(shortDescriptionHtml)}" data-full-html="${encodeURIComponent(fullDescriptionHtml)}">顯示更多</button>` : ""}
                 </div>
-                <div class="card-footer">
-                    ${tagsHtml}
-                    <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
-                </div>
+                <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
             `;
             return card;
         }
