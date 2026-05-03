@@ -110,11 +110,6 @@ function createCard(coupon, index, keyword = "") {
 
     const highlightedCode = highlightText(code, keyword);
     const fullDescriptionHtml = formatDescriptionHtml(rawDescription, keyword);
-    const maxDescriptionLength = 120;
-    const isLongDescription = rawDescription.length > maxDescriptionLength;
-    const shortDescriptionHtml = isLongDescription
-        ? formatDescriptionHtml(`${rawDescription.slice(0, maxDescriptionLength)}…`, keyword)
-        : fullDescriptionHtml;
     const normalizedTags = tags.map((tag) => escapeHtml(tag));
     const tagsHtml = `<div class="tags-row${normalizedTags.length ? "" : " tags-row-empty"}" aria-label="優惠標籤"${normalizedTags.length ? "" : " aria-hidden=\"true\""}><div class="tags-list">${normalizedTags.map((tag) => `<span class="tags-item">${highlightText(tag, keyword)}</span>`).join("")}</div></div>`;
 
@@ -129,13 +124,27 @@ function createCard(coupon, index, keyword = "") {
         ${tagsHtml}
         <div class="description-wrap">
             <p class="description">
-                <span class="description-text">${shortDescriptionHtml}</span>
+                <span class="description-text is-collapsed">${fullDescriptionHtml}</span>
             </p>
-            ${isLongDescription ? `<button class="description-toggle" type="button" data-expanded="false" data-short-html="${encodeURIComponent(shortDescriptionHtml)}" data-full-html="${encodeURIComponent(fullDescriptionHtml)}">顯示更多</button>` : ""}
+            <button class="description-toggle" type="button" data-expanded="false" hidden>顯示更多</button>
         </div>
         <button class="copy-btn" onclick="window.open('https://www.pizzahut.com.tw/order/?mode=step_2&type_id=1025&cno=${code}', '_blank')" type="button">跳轉訂餐</button>
     `;
     return card;
+}
+
+function applyDescriptionExpansion(card) {
+    const textEl = card.querySelector(".description-text");
+    const toggleEl = card.querySelector(".description-toggle");
+    if (!textEl || !toggleEl) {
+        return;
+    }
+
+    textEl.classList.add("is-collapsed");
+    const needsToggle = textEl.scrollHeight > textEl.clientHeight + 1;
+    toggleEl.hidden = !needsToggle;
+    toggleEl.dataset.expanded = "false";
+    toggleEl.textContent = "顯示更多";
 }
 
 export function appendCouponCards(listEl, coupons, startIndex, keyword) {
@@ -143,7 +152,9 @@ export function appendCouponCards(listEl, coupons, startIndex, keyword) {
         return 0;
     }
     coupons.forEach((coupon, index) => {
-        listEl.appendChild(createCard(coupon, startIndex + index, keyword));
+        const card = createCard(coupon, startIndex + index, keyword);
+        listEl.appendChild(card);
+        applyDescriptionExpansion(card);
     });
     return coupons.length;
 }

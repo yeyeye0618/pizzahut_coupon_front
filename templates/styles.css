@@ -326,6 +326,17 @@ h1 {
     gap: 6px;
 }
 
+.description-text {
+    display: block;
+}
+
+.description-text.is-collapsed {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    overflow: hidden;
+}
+
 .description-toggle {
     align-self: flex-start;
     border: 0;

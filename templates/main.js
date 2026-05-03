@@ -191,10 +191,7 @@ setupEvents({
         }
         const expanded = toggleButton.dataset.expanded === "true";
         const nextExpanded = !expanded;
-        const html = nextExpanded
-            ? decodeURIComponent(toggleButton.dataset.fullHtml || "")
-            : decodeURIComponent(toggleButton.dataset.shortHtml || "");
-        textEl.innerHTML = html;
+        textEl.classList.toggle("is-collapsed", !nextExpanded);
         toggleButton.dataset.expanded = nextExpanded ? "true" : "false";
         toggleButton.textContent = nextExpanded ? "顯示更少" : "顯示更多";
     },
