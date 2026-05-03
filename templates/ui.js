@@ -13,7 +13,8 @@ export function getElements() {
         infiniteTriggerEl: document.getElementById("infinite-trigger"),
         toastEl: document.getElementById("toast"),
         tagsFilterListEl: document.getElementById("tags-filter-list"),
-        tagsFilterSummaryEl: document.getElementById("tags-filter-summary")
+        tagsFilterSummaryEl: document.getElementById("tags-filter-summary"),
+        sortSelectEl: document.getElementById("sort-select")
     };
 }
 

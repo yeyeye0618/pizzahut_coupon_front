@@ -3,6 +3,7 @@ export function setupEvents({
     onSearchInput,
     onTagToggle,
     onMatchModeChange,
+    onSortChange,
     onDescriptionToggle,
     onCopyButtonClick,
     onInfiniteIntersect
@@ -11,6 +12,7 @@ export function setupEvents({
         listEl,
         searchEl,
         tagsFilterListEl,
+        sortSelectEl,
         infiniteTriggerEl
     } = elements;
 
@@ -37,6 +39,12 @@ export function setupEvents({
             onMatchModeChange(event.target.value);
         });
     });
+
+    if (sortSelectEl) {
+        sortSelectEl.addEventListener("change", (event) => {
+            onSortChange(event.target.value);
+        });
+    }
 
     if (listEl) {
         listEl.addEventListener("click", (event) => {

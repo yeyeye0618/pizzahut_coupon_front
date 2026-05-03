@@ -22,6 +22,7 @@ const state = {
     isAppending: false,
     activeKeyword: "",
     tagMatchMode: "union",
+    sortMode: "price-asc",
     selectedTags: new Set(),
     allAvailableTags: []
 };
@@ -72,6 +73,47 @@ function filterCoupons(keyword) {
     });
 }
 
+function parsePriceValue(rawPrice) {
+    if (rawPrice === null || rawPrice === undefined) {
+        return null;
+    }
+    if (typeof rawPrice === "number" && Number.isFinite(rawPrice)) {
+        return rawPrice;
+    }
+    const text = String(rawPrice).trim();
+    if (!text) {
+        return null;
+    }
+    const directNumber = Number(text);
+    if (Number.isFinite(directNumber)) {
+        return directNumber;
+    }
+    const matched = text.match(/-?\d+(?:\.\d+)?/);
+    if (!matched) {
+        return null;
+    }
+    const parsed = Number(matched[0]);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getSortablePrice(coupon) {
+    const priceValue = parsePriceValue(coupon?.price);
+    return priceValue === null ? Number.POSITIVE_INFINITY : priceValue;
+}
+
+function compareCouponByPrice(a, b) {
+    const priceA = getSortablePrice(a);
+    const priceB = getSortablePrice(b);
+    if (priceA !== priceB) {
+        return state.sortMode === "price-desc" ? priceB - priceA : priceA - priceB;
+    }
+    return String(a?.coupon_num ?? "").localeCompare(String(b?.coupon_num ?? ""), "zh-Hant");
+}
+
+function sortCoupons(coupons) {
+    return [...coupons].sort(compareCouponByPrice);
+}
+
 function appendNextPage() {
     if (state.isAppending || !hasMoreCoupons()) {
         updateInfiniteTrigger(elements.infiniteTriggerEl, state.filteredCoupons.length, state.renderedCount);
@@ -110,7 +152,8 @@ function renderCoupons(coupons, keyword = "") {
 function updateResults() {
     const keyword = elements.searchEl.value;
     const filtered = filterCoupons(keyword);
-    renderCoupons(filtered, keyword);
+    const sorted = sortCoupons(filtered);
+    renderCoupons(sorted, keyword);
 
     const trimmedKeyword = keyword.trim();
     const hasKeyword = Boolean(trimmedKeyword);
@@ -152,7 +195,7 @@ async function loadCoupons() {
         state.allAvailableTags = buildTagCatalog(state.allCoupons);
         refreshTagFilters();
         elements.totalCountEl.textContent = String(state.allCoupons.length);
-        renderCoupons(state.allCoupons, elements.searchEl.value);
+        renderCoupons(sortCoupons(state.allCoupons), elements.searchEl.value);
         setStatus(elements.statusEl, `已載入 ${state.allCoupons.length} 筆折價券`, "success");
     } catch (error) {
         state.allCoupons = [];
@@ -182,6 +225,10 @@ setupEvents({
     onMatchModeChange: (value) => {
         state.tagMatchMode = value === "intersection" ? "intersection" : "union";
         updateTagFilterSummary(elements.tagsFilterSummaryEl, state.selectedTags, state.tagMatchMode);
+        updateResults();
+    },
+    onSortChange: (value) => {
+        state.sortMode = value === "price-desc" ? "price-desc" : "price-asc";
         updateResults();
     },
     onDescriptionToggle: (toggleButton) => {

@@ -21,14 +21,23 @@
             <div class="filter-bar">
                 <div class="filter-head">
                     <div id="tags-filter-list" class="tags-filter-list" aria-live="polite"></div>
-                    <div class="match-mode" role="radiogroup" aria-label="標籤篩選模式">
-                        <label class="mode-option">
-                            <input type="radio" name="tag-match-mode" value="union" checked />
-                            OR
-                        </label>
-                        <label class="mode-option">
-                            <input type="radio" name="tag-match-mode" value="intersection" />
-                            AND
+                    <div class="filter-tools">
+                        <div class="match-mode" role="radiogroup" aria-label="標籤篩選模式">
+                            <label class="mode-option">
+                                <input type="radio" name="tag-match-mode" value="union" checked />
+                                OR
+                            </label>
+                            <label class="mode-option">
+                                <input type="radio" name="tag-match-mode" value="intersection" />
+                                AND
+                            </label>
+                        </div>
+                        <label class="sort-control" for="sort-select">
+                            <span>排序</span>
+                            <select id="sort-select">
+                                <option value="price-asc">價格由低到高</option>
+                                <option value="price-desc">價格由高到低</option>
+                            </select>
                         </label>
                     </div>
                 </div>

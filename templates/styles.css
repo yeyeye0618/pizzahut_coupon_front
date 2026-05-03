@@ -146,6 +146,13 @@ h1 {
     background: #fff;
 }
 
+.filter-tools {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
 .mode-option {
     display: inline-flex;
     align-items: center;
@@ -161,6 +168,30 @@ h1 {
 .mode-option input {
     accent-color: #d6402a;
     margin: 0;
+}
+
+.sort-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border: 1px solid #efcfb4;
+    border-radius: 999px;
+    background: #fff;
+    color: #784a31;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.sort-control select {
+    border: 0;
+    background: transparent;
+    color: #784a31;
+    font-size: 0.82rem;
+    font-weight: 700;
+    outline: none;
+    min-width: 130px;
+    cursor: pointer;
 }
 
 .tags-filter-list {
@@ -524,6 +555,10 @@ h1 {
     .filter-head {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .filter-tools {
+        width: 100%;
     }
 
 }
