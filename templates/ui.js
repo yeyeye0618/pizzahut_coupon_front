@@ -106,14 +106,7 @@ export function renderSkeletons(listEl, infiniteTriggerEl, count = 6) {
 function createCard(coupon, index, keyword = "") {
     const code = escapeHtml(String(coupon.coupon_num ?? "").trim() || "未提供");
     const rawDescription = String(coupon.description ?? "").trim() || "暫無說明";
-    const rawPreviewImage = String(coupon.preview_image ?? "").trim();
     const tags = normalizeTags(coupon.tags);
-    const previewImage = rawPreviewImage && !/^javascript:/i.test(rawPreviewImage)
-        ? escapeHtml(rawPreviewImage)
-        : "";
-    const previewHtml = previewImage
-        ? `<div class="preview"><img loading="lazy" src="${previewImage}" alt="優惠餐點預覽圖" /></div>`
-        : "<div class=\"preview preview-empty\" aria-label=\"無預覽圖\">暫無預覽圖</div>";
 
     const highlightedCode = highlightText(code, keyword);
     const fullDescriptionHtml = formatDescriptionHtml(rawDescription, keyword);
@@ -133,7 +126,6 @@ function createCard(coupon, index, keyword = "") {
             <span class="tag">優惠代碼</span>
             <h3 class="code">${highlightedCode}</h3>
         </div>
-        ${previewHtml}
         ${tagsHtml}
         <div class="description-wrap">
             <p class="description">
