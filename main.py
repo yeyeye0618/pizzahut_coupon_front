@@ -1,6 +1,4 @@
 from flask import Flask, jsonify, render_template, send_from_directory
-import json
-import time
 from supabase import create_client, Client
 import os
 
