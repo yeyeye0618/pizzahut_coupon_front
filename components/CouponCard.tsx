@@ -1,56 +1,71 @@
 'use client';
+
 import { useState, useMemo, useRef, useLayoutEffect } from 'react';
 import { HighlightedText } from './HighlightedText';
 import { normalizeTags, formatOrderLink } from '@/lib/coupon-utils';
+import { Coupon } from '@/lib/supabase'; // 確保從這裡匯入強型別
 
 interface CouponCardProps {
-  coupon: any;
+  coupon: Coupon; // 修正 Lint: 取代 any
   keyword: string;
   index: number;
 }
 
 export function CouponCard({ coupon, keyword, index }: CouponCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [showToggleButton, setShowToggleButton] = useState(false); // 控制按鈕是否顯示
-  const textRef = useRef<HTMLSpanElement>(null); // 用於測量高度
-  
+  const [showToggleButton, setShowToggleButton] = useState(false);
+  const textRef = useRef<HTMLSpanElement>(null);
+
   const tags = useMemo(() => normalizeTags(coupon.tags), [coupon.tags]);
 
-  // 測量高度的邏輯
   useLayoutEffect(() => {
     const checkOverflow = () => {
       if (textRef.current) {
-        // scrollHeight 是內容完整高度，clientHeight 是被 CSS 限制後的顯示高度
-        // 如果內容高度 > 顯示高度，代表被截斷了
         const isOverflowing = textRef.current.scrollHeight > textRef.current.clientHeight;
         setShowToggleButton(isOverflowing);
       }
     };
 
-    // 初始測量
     checkOverflow();
-
-    // 如果視窗大小改變（響應式佈局），也要重新測量
     window.addEventListener('resize', checkOverflow);
     return () => window.removeEventListener('resize', checkOverflow);
-  }, [coupon.description, keyword]); // 當內容或搜尋關鍵字改變時重新測量
+  }, [coupon.description, keyword]);
+
+  const handleOrderRedirect = () => {
+    const url = formatOrderLink(coupon.coupon_num);
+    // 修正資安風險：加入 noopener, noreferrer 防止 tabnabbing
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const renderDescription = () => {
     const desc = String(coupon.description ?? "暫無說明");
     const paragraphs = desc.split('。').filter(Boolean);
 
+    // 1. 定義用於分割的 Global Regex
+    const splitRegex = /(價格：\$[\d+~?\$]+)/g;
+    // 2. 定義用於「判斷」的非 Global Regex (避開 lastIndex 副作用)
+    const checkRegex = /^價格：\$[\d+~?\$]+$/;
+
     return paragraphs.map((p, i) => {
-      const priceRegex = /(價格：\$[\d+~?\$]+)/g;
-      const segments = p.split(priceRegex);
+      const segments = p.split(splitRegex);
 
       return (
         <span key={i}>
-          {segments.map((seg, j) => 
-            priceRegex.test(seg) 
-              ? <span key={j} className="price-highlight">{seg}</span>
-              : <HighlightedText key={j} text={seg} keyword={keyword} />
+          {segments.map((seg, j) => {
+            // 使用沒有狀態副作用的 checkRegex.test
+            if (checkRegex.test(seg)) {
+              return <span key={j} className="price-highlight">{seg}</span>;
+            }
+            // 非價格部分則進行關鍵字高亮
+            return <HighlightedText key={j} text={seg} keyword={keyword} />;
+          })}
+          {/* 渲染換行 */}
+          {i < paragraphs.length - 1 && (
+            <>
+              <br />
+              <br />
+            </>
           )}
-          {i < paragraphs.length - 1 && <><br /><br /></>}
         </span>
       );
     });
@@ -80,7 +95,6 @@ export function CouponCard({ coupon, keyword, index }: CouponCardProps) {
 
       <div className="description-wrap">
         <p className="description">
-          {/* 這裡加入 ref */}
           <span 
             ref={textRef}
             className={`description-text ${!isExpanded ? 'is-collapsed' : ''}`}
@@ -89,7 +103,6 @@ export function CouponCard({ coupon, keyword, index }: CouponCardProps) {
           </span>
         </p>
         
-        {/* 只有當需要 Toggle 時才渲染按鈕 */}
         {showToggleButton && (
           <button 
             className="description-toggle" 
@@ -103,7 +116,7 @@ export function CouponCard({ coupon, keyword, index }: CouponCardProps) {
 
       <button 
         className="copy-btn" 
-        onClick={() => window.open(formatOrderLink(coupon.coupon_num), '_blank')}
+        onClick={handleOrderRedirect} // 使用處理函式
         type="button"
       >
         跳轉訂餐

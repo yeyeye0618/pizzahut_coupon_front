@@ -1,30 +1,28 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useCoupons } from '@/hooks/useCoupons';
 import { CouponCard } from './CouponCard';
 import { PAGE_SIZE } from '@/lib/coupon-utils';
+import { Coupon } from '@/lib/supabase';
 
-export default function CouponManager({ initialData }: { initialData: any[] }) {
+export default function CouponManager({ initialData }: { initialData: Coupon[] }) {
   const {
     filteredCoupons,
     allAvailableTags,
-    search, setSearch,
-    selectedTags, setSelectedTags,
-    matchMode, setMatchMode,
-    sortMode, setSortMode
+    search,
+    setSearch,
+    selectedTags,
+    setSelectedTags,
+    matchMode,
+    setMatchMode,
+    sortMode,
+    setSortMode,
   } = useCoupons(initialData);
 
-  // 分頁狀態 (無限捲動)
   const [displayCount, setDisplayCount] = useState(PAGE_SIZE);
-  const observerTarget = useRef(null);
+  const observerTarget = useRef<HTMLDivElement>(null);
 
-  // 當搜尋或過濾條件改變時，重置顯示數量
-  useEffect(() => {
-    setDisplayCount(PAGE_SIZE);
-  }, [search, selectedTags, matchMode, sortMode]);
-
-  // 無限捲動邏輯 (對應原本 event.js 的 IntersectionObserver)
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -35,18 +33,38 @@ export default function CouponManager({ initialData }: { initialData: any[] }) {
       { threshold: 0.1, rootMargin: '180px' }
     );
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
     }
 
-    return () => observer.disconnect();
+    return () => {
+      if (currentTarget) observer.unobserve(currentTarget);
+      observer.disconnect();
+    };
   }, [filteredCoupons.length, displayCount]);
 
   const toggleTag = (tag: string) => {
     const newTags = new Set(selectedTags);
     if (newTags.has(tag)) newTags.delete(tag);
     else newTags.add(tag);
+    setDisplayCount(PAGE_SIZE);
     setSelectedTags(newTags);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setDisplayCount(PAGE_SIZE);
+    setSearch(value);
+  };
+
+  const handleMatchModeChange = (mode: 'union' | 'intersection') => {
+    setDisplayCount(PAGE_SIZE);
+    setMatchMode(mode);
+  };
+
+  const handleSortModeChange = (mode: 'price-asc' | 'price-desc') => {
+    setDisplayCount(PAGE_SIZE);
+    setSortMode(mode);
   };
 
   return (
@@ -63,55 +81,59 @@ export default function CouponManager({ initialData }: { initialData: any[] }) {
         <div className="controls">
           <label className="search-box">
             <span className="search-icon"></span>
-            <input 
-              type="text" 
-              placeholder="搜尋代碼或優惠內容..." 
+            <input
+              type="text"
+              placeholder="搜尋代碼或優惠內容..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
             />
           </label>
           <div className="pill">總數 <span>{initialData.length}</span></div>
-          <div className="pill">顯示 <span>{Math.min(displayCount, filteredCoupons.length)}</span></div>
+          <div className="pill">顯示中 <span>{Math.min(displayCount, filteredCoupons.length)}</span></div>
         </div>
 
         <div className="filter-bar">
           <div className="filter-head">
             <div className="tags-filter-list">
-              {allAvailableTags.map(([tag, count]) => (
+              {allAvailableTags.map(([tag]) => (
                 <button
                   key={tag}
                   type="button"
                   className={`filter-tag ${selectedTags.has(tag) ? 'active' : ''}`}
                   onClick={() => toggleTag(tag)}
+                  aria-pressed={selectedTags.has(tag)}
                 >
                   {tag}
                 </button>
               ))}
             </div>
-            
+
             <div className="filter-tools">
               <div className="match-mode">
                 <label className="mode-option">
-                  <input 
-                    type="radio" 
-                    name="mode" 
-                    checked={matchMode === 'union'} 
-                    onChange={() => setMatchMode('union')} 
+                  <input
+                    type="radio"
+                    name="mode"
+                    checked={matchMode === 'union'}
+                    onChange={() => handleMatchModeChange('union')}
                   /> OR
                 </label>
                 <label className="mode-option">
-                  <input 
-                    type="radio" 
-                    name="mode" 
-                    checked={matchMode === 'intersection'} 
-                    onChange={() => setMatchMode('intersection')} 
+                  <input
+                    type="radio"
+                    name="mode"
+                    checked={matchMode === 'intersection'}
+                    onChange={() => handleMatchModeChange('intersection')}
                   /> AND
                 </label>
               </div>
 
               <label className="sort-control">
                 <span>排序</span>
-                <select value={sortMode} onChange={(e) => setSortMode(e.target.value as any)}>
+                <select
+                  value={sortMode}
+                  onChange={(e) => handleSortModeChange(e.target.value as 'price-asc' | 'price-desc')}
+                >
                   <option value="price-asc">價格低 → 高</option>
                   <option value="price-desc">價格高 → 低</option>
                 </select>
@@ -119,9 +141,11 @@ export default function CouponManager({ initialData }: { initialData: any[] }) {
             </div>
           </div>
         </div>
-        
+
         <p className="status">
-          {selectedTags.size > 0 || search ? `找到 ${filteredCoupons.length} 筆符合條件的結果` : `已載入最新優惠`}
+          {selectedTags.size > 0 || search.trim()
+            ? `找到 ${filteredCoupons.length} 筆符合條件的結果`
+            : '已載入最新優惠'}
         </p>
       </section>
 
@@ -129,21 +153,24 @@ export default function CouponManager({ initialData }: { initialData: any[] }) {
         {filteredCoupons.length > 0 ? (
           <div className="grid">
             {filteredCoupons.slice(0, displayCount).map((coupon, index) => (
-              <CouponCard 
-                key={coupon.coupon_num} 
-                coupon={coupon} 
-                keyword={search} 
-                index={index} 
+              <CouponCard
+                key={coupon.coupon_num}
+                coupon={coupon}
+                keyword={search}
+                index={index}
               />
             ))}
           </div>
         ) : (
           <div className="empty">找不到符合條件的折價券，試試看不同關鍵字。</div>
         )}
-        
-        {/* 無限捲動觸發點 */}
+
         <div ref={observerTarget} className="infinite-trigger">
-          {displayCount < filteredCoupons.length ? "往下滑載入更多..." : `已顯示全部 ${filteredCoupons.length} 筆`}
+          {displayCount < filteredCoupons.length
+            ? '往下滑載入更多...'
+            : filteredCoupons.length > 0
+              ? `已顯示全部 ${filteredCoupons.length} 筆`
+              : ''}
         </div>
       </section>
     </>
